@@ -9,89 +9,74 @@ setlocal enabledelayedexpansion
 :: АВТОР:       Наиль Марков
 :: ВЕРСИЯ:      2.0 (08.07.2026)
 ::
-:: ТРЕБОВАНИЯ:  Windows / Windows Server. Наличие прав на чтение/запуск в папках.
-:: ЛОГИКА:      Проверяет заданные директории на наличие файлов.
+:: ОПИСАНИЕ:      Проверяет заданные директории на наличие файлов.
 ::              Считает общее количество найденных файлов и их суммарный размер. 
 ::              Если файлы найдены — запускает целевой скрипт обработки. 
 ::              Ведет логирование всех действий в отдельный файл.
 ::
 :: ====================================================================
 
-
-
-:: 1. ПОДКЛЮЧЕНИЕ МОДУЛЕЙ ИЗ ПОДПАПОК
+:: Подключение зависимостей
 if exist "%~dp0config\settings.cmd" (
   call "%~dp0config\settings.cmd"
 ) else (
-    echo [КРИТИЧЕСКАЯ ОШИБКА] Файл конфигурации config\settings.cmd не найден!
-    exit /b 1
+  echo %DATE%_%TIME% [КРИТИЧЕСКАЯ ОШИБКА] Файл конфигурации config\settings.cmd не найден! > logs\error_start.txt
+  exit
 )
 
-echo %DIR_LOGS%
-@REM :: НАСТРОЙКИ
-@REM set "LOG_FILE=%~dp0process_log.txt"
-@REM set "TARGET_SCRIPT=%~dp0worker.cmd"
+:: Форматирование даты для имени файла (ДД-ММ-ГГГГ)
+for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value') do set "dt=%%I"
+set "FILE_LOG=%DIR_LOGS%\process_log_%dt:~6,2%-%dt:~4,2%-%dt:~0,4%.log"
 
-@REM :: Список директорий для проверки (разделять точкой с запятой)
-@REM set "DIRS_TO_CHECK=C:\TargetDir1;C:\TargetDir2;D:\DataFolder"
+:: Проверяет наличие лог файла
+if NOT EXIST %FILE_LOG% call :function_write_start
 
-@REM :: СБРОС СЧЕТЧИКОВ
-@REM set /a TOTAL_FILES=0
-@REM set /a TOTAL_SIZE_MB=0
+call "%~dp0logs\logger.cmd" "INFO" "Запуск процесса обработки..."
 
-@REM :: Инициализация лога
-@REM echo =================================================== >> "%LOG_FILE%"
-@REM echo [%DATE% %TIME%] ЗАПУСК ПРОВЕРКИ ДИРЕКТОРИЙ >> "%LOG_FILE%"
-@REM echo =================================================== >> "%LOG_FILE%"
+call "%~dp0logs\logger.cmd" "INFO" "Проверяю наличие файлов в директории %DIR_TO_CHECK%"
 
-@REM :: ЦИКЛ ПЕРЕБОРА ДИРЕКТОРИЙ
-@REM for %%D in ("%DIRS_TO_CHECK:;=" "%") do (
-@REM     set "CURRENT_DIR=%%~D"
+:: Цикл FOR /R находит абсолютно все подпапки (включая вложенные)
+for /r "%DIR_TO_CHECK%" %%D in (.) do (
+  set "CURRENT_DIR=%%~fD"
     
-@REM     if exist "!CURRENT_DIR!" (
-@REM         echo [%DATE% %TIME%] Проверка директории: !CURRENT_DIR! >> "%LOG_FILE%"
-        
-@REM         :: Внутренний цикл подсчета файлов в текущей папке
-@REM         for /f "tokens=*" %%F in ('dir "!CURRENT_DIR!" /b /a-d 2^>nul') do (
-@REM             set /a TOTAL_FILES+=1
-            
-@REM             :: Получаем размер файла в байтах
-@REM             set "FILE_PATH=!CURRENT_DIR!\%%F"
-@REM             for %%I in ("!FILE_PATH!") do (
-@REM                 set /a FILE_SIZE_BYTES=%%~zI
-@REM                 :: Переводим байты в мегабайты (грубое округление для CMD)
-@REM                 set /a FILE_SIZE_MB=!FILE_SIZE_BYTES! / 1024 / 1024
-@REM                 set /a TOTAL_SIZE_MB+=!FILE_SIZE_MB!
-@REM             )
-@REM         )
-@REM     ) else (
-@REM         echo [%DATE% %TIME%] [ПРЕДУПРЕЖДЕНИЕ] Директория не найдена: !CURRENT_DIR! >> "%LOG_FILE%"
-@REM     )
-@REM )
+  if /i not "!CURRENT_DIR!"=="%DIR_TO_CHECK%" (  
+    :: Сбрасываем счетчики для каждой папки
+    set "FILE_COUNT=0"
+    set "TOTAL_SIZE=0"
 
-@REM :: ЗАПИСЬ ИТОГОВ В ЛОГ
-@REM echo [%DATE% %TIME%] Найдено файлов всего: %TOTAL_FILES% >> "%LOG_FILE%"
-@REM echo [%DATE% %TIME%] Общий размер (примерно): %TOTAL_SIZE_MB% МБ >> "%LOG_FILE%"
+    :: Цикл FOR /F считает файлы только в ТЕКУЩЕЙ подпапке (без ухода глубже)
+    for /f "delims=" %%F in ('dir "!CURRENT_DIR!" /b /a-d 2^>nul') do (
+      set /a FILE_COUNT+=1
 
-@REM :: ПРОВЕРКА НАЛИЧИЯ ФАЙЛОВ И ЗАПУСК СКРИПТАОБРАБОТКИ
-@REM if %TOTAL_FILES% gtr 0 (
-@REM     echo [%DATE% %TIME%] Файлы обнаружены. Запуск обработчика: %TARGET_SCRIPT% >> "%LOG_FILE%"
-    
-@REM     :: Запуск внешнего скрипта с перехватом ошибки
-@REM     call "%TARGET_SCRIPT%"
-    
-@REM     if !errorlevel! neq 0 (
-@REM         echo [%DATE% %TIME%] [ОШИБКА] Скрипт обработки завершился с кодом !errorlevel! >> "%LOG_FILE%"
-@REM         goto :error_exit
-@REM     )
-@REM     echo [%DATE% %TIME%] Обработка успешно завершена. >> "%LOG_FILE%"
-@REM ) else (
-@REM     echo [%DATE% %TIME%] Файлы не найдены. Запуск обработчика отменен. >> "%LOG_FILE%"
-@REM )
+      :: Получаем размер конкретного файла
+      for %%I in ("!CURRENT_DIR!\%%F") do (
+        set /a TOTAL_SIZE+=%%~zI
+      )
+    )
 
-@REM echo [%DATE% %TIME%] ЗАВЕРШЕНИЕ РАБОТЫ СКРИПТА >> "%LOG_FILE%"
-@REM exit /b 0
+    :: Если в текущей папке есть файлы, выводим данные и запускаем скрипт
+    if !FILE_COUNT! gtr 0 (
+      call "%~dp0logs\logger.cmd" "INFO" "Найдена папка с файлами: !CURRENT_DIR!"
+      call "%~dp0logs\logger.cmd" "INFO" "Количество файлов в папке: !FILE_COUNT!"
+      call "%~dp0logs\logger.cmd" "INFO" "Размер файлов: !TOTAL_SIZE! байт"
 
-@REM :error_exit
-@REM echo [%DATE% %TIME%] СКРИПТ ЗАВЕРШЕН С ОШИБКАМИ >> "%LOG_FILE%"
-@REM exit /b 1
+    ) else (
+      call "%~dp0logs\logger.cmd" "WARNING" "В папке !CURRENT_DIR! файлы отсутствуют"
+    )
+  )
+)
+
+call "%~dp0logs\logger.cmd" "INFO" "Запуск процесса обработки завершен"
+goto :eof
+
+:: Создает файл логирования
+:function_write_start
+
+echo :: ===================================== > "%FILE_LOG%"
+echo :: Старт логирования в файл >> "%FILE_LOG%"
+echo :: Путь к файлу - "%FILE_LOG%" >> "%FILE_LOG%"
+echo :: Дата создания - %DATE% >> "%FILE_LOG%"
+echo :: ===================================== >> "%FILE_LOG%"
+echo. >> "%FILE_LOG%"
+
+goto :eof
