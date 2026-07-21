@@ -27,6 +27,7 @@ if exist "%~dp0config\settings.cmd" (
 :: Форматирование даты для имени файла (ДД-ММ-ГГГГ)
 for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value') do set "dt=%%I"
 set "FILE_LOG=%DIR_LOGS%\process_log_%dt:~6,2%-%dt:~4,2%-%dt:~0,4%.log"
+set "CURRENT_DATE=%dt:~6,2%.%dt:~4,2%.%dt:~0,4%"
 
 :: Проверяет наличие лог файла
 if NOT EXIST %FILE_LOG% call :function_write_start
@@ -66,6 +67,9 @@ for /r "%DIR_TO_CHECK%" %%D in (.) do (
   )
 )
 
+if "%CURRENT_DATE%"=="21.07.2026" (
+  call "%~dp0utils\conclusions.cmd"
+)
 call "%~dp0logs\logger.cmd" "INFO" "Запуск процесса обработки завершен"
 goto :eof
 
