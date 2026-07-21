@@ -32,9 +32,9 @@ set "CURRENT_DATE=%dt:~6,2%.%dt:~4,2%.%dt:~0,4%"
 :: Проверяет наличие лог файла
 if NOT EXIST %FILE_LOG% call :function_write_start
 
-call "%~dp0logs\logger.cmd" "INFO" "Запуск процесса обработки..."
+call "%~dp0utils\logger.cmd" "INFO" "Запуск процесса обработки..."
 
-call "%~dp0logs\logger.cmd" "INFO" "Проверяю наличие файлов в директории %DIR_TO_CHECK%"
+call "%~dp0utils\logger.cmd" "INFO" "Проверяю наличие файлов в директории %DIR_TO_CHECK%"
 
 :: Цикл FOR /R находит абсолютно все подпапки (включая вложенные)
 for /r "%DIR_TO_CHECK%" %%D in (.) do (
@@ -57,12 +57,12 @@ for /r "%DIR_TO_CHECK%" %%D in (.) do (
 
     :: Если в текущей папке есть файлы, выводим данные и запускаем скрипт
     if !FILE_COUNT! gtr 0 (
-      call "%~dp0logs\logger.cmd" "INFO" "Найдена папка с файлами: !CURRENT_DIR!"
-      call "%~dp0logs\logger.cmd" "INFO" "Количество файлов в папке: !FILE_COUNT!"
-      call "%~dp0logs\logger.cmd" "INFO" "Размер файлов: !TOTAL_SIZE! байт"
+      call "%~dp0utils\logger.cmd" "INFO" "Найдена папка с файлами: !CURRENT_DIR!"
+      call "%~dp0utils\logger.cmd" "INFO" "Количество файлов в папке: !FILE_COUNT!"
+      call "%~dp0utils\logger.cmd" "INFO" "Размер файлов: !TOTAL_SIZE! байт"
 
     ) else (
-      call "%~dp0logs\logger.cmd" "WARNING" "В папке !CURRENT_DIR! файлы отсутствуют"
+      call "%~dp0utils\logger.cmd" "WARNING" "В папке !CURRENT_DIR! файлы отсутствуют"
     )
   )
 )
@@ -70,7 +70,7 @@ for /r "%DIR_TO_CHECK%" %%D in (.) do (
 if "%CURRENT_DATE%"=="21.07.2026" (
   call "%~dp0utils\conclusions.cmd"
 )
-call "%~dp0logs\logger.cmd" "INFO" "Запуск процесса обработки завершен"
+call "%~dp0utils\logger.cmd" "INFO" "Запуск процесса обработки завершен"
 goto :eof
 
 :: Создает файл логирования

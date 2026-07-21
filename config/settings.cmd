@@ -19,6 +19,7 @@ set "DIR_ARCHIVE=%DIR_CURRENT%\archive"
 set "DIR_DATA=%DIR_CURRENT%\data"
 set "DIR_LOGS=%DIR_CURRENT%\logs"
 set "DIR_TEMP=%DIR_DATA%\temp"
+set "DIR_UTILS=%DIR_CURRENT%\utils"
 set "DIR_FILES=D:\cmd\test_dir"
 
 :: ==== Directories ====

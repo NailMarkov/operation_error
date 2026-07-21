@@ -16,7 +16,7 @@ setlocal enabledelayedexpansion
 ::
 :: ====================================================================
 
-set "LOGGER=%DIR_LOGS%\logger.cmd"
+set "LOGGER=%DIR_UTILS%\logger.cmd"
 set "LINE_COUNT=0" 
 set "FOUND_MARKER=0"
 
