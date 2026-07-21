@@ -9,18 +9,16 @@ setlocal enabledelayedexpansion
 :: АВТОР:       Наиль Марков
 :: ВЕРСИЯ:      2.0 (20.07.2026)
 ::
-:: ЛОГИКА:      1. Определяет текущий месяц/год и создаёт маркер вида "01.ММ.ГГГГ".
-::              2. Построчно читает исходный файл: все строки ВЫШЕ маркера скидывает в ARCHIVE_FILE.
-::              3. Как только маркер найден — он и все строки НИЖЕ него сохраняются в TEMP_FILE.
-::              4. В конце TEMP_FILE заменяет собой исходный файл. Архив при этом дополняется.
+:: ОПИСАНИЕ:    1. Определяет текущий месяц/год и создаёт маркер вида "01.ММ.ГГГГ".
+::              2. Построчно читает исходный файл: все строки ВЫШЕ маркера скидывает в conclusions_old.txt.
+::              3. Как только маркер найден — он и все строки НИЖЕ него сохраняются в conclusions_temp.txt.
+::              4. В конце conclusions_temp.txt заменяет собой исходный файл. Архив при этом дополняется.
 ::
 :: ====================================================================
 
 set "LOGGER=%DIR_LOGS%\logger.cmd"
-:: set "FILE_CONCLUSIONS=D:\cmd\operation_error\data\conclusions.txt"
-set "ARCHIVE_FILE=D:\cmd\operation_error\data\archive.txt"
-set "TEMP_FILE=D:\cmd\operation_error\data\temp.txt"
-
+set "LINE_COUNT=0" 
+set "FOUND_MARKER=0"
 
 :: Создаем маркер текущего месяца в формате 01.ММ.ГГГГ (например, 01.07.2026)
 for /f "tokens=2 delims==" %%i in ('wmic os get localdatetime /value') do set "dt=%%i"
@@ -34,14 +32,10 @@ if not exist "%FILE_CONCLUSIONS%" (
 )
 
 :: Если на диске остался временный файл от прошлого запуска, удаляем его
-if exist "%TEMP_FILE%" del "%TEMP_FILE%"
-
-:: Создаем флаг-переключатель. 
-set "FOUND_MARKER=0"
+if exist "%FILE_CONCLUSIONS_TEMP%" del "%FILE_CONCLUSIONS_TEMP%"
 
 call "%LOGGER%" "INFO" "Начинаю поиск более ранних заключений..."
 
-set "LINE_COUNT=0"
 for /f "usebackq delims=" %%a in ("%FILE_CONCLUSIONS%") do (
   set "line=%%a"
   
@@ -50,19 +44,21 @@ for /f "usebackq delims=" %%a in ("%FILE_CONCLUSIONS%") do (
   
   :: Проверяем состояние флага
   if "!FOUND_MARKER!"=="1" (
-    echo !line!>>"%TEMP_FILE%"
+    echo !line!>>"%FILE_CONCLUSIONS_TEMP%"
   ) else (
-    echo !line!>>"%ARCHIVE_FILE%"
+    echo !line!>>"%FILE_CONCLUSIONS_OLD%"
     set /a LINE_COUNT+=1
   )
 )
 call "%LOGGER%" "INFO" "Перемещено в архив %LINE_COUNT% заключений"
+
 :: Если маркер был найден, то временный файл успешно создался и наполнился новыми записями
-if exist "%TEMP_FILE%" (
+if exist "%FILE_CONCLUSIONS_TEMP%" (
   :: Заменяем оригинальный рабочий файл временным файлом.
-  move /y "%TEMP_FILE%" "%FILE_CONCLUSIONS%" >nul
+  move /y "%FILE_CONCLUSIONS_TEMP%" "%FILE_CONCLUSIONS%" >nul
+  call "%LOGGER%" "INFO" "Файл заключений обновлен"
 )
 
-:: Корректно завершаем сессию работы с переменными и закрываем скрипт
+call "%LOGGER%" "INFO" "Поиск более ранних заключений завершен"
 endlocal
 exit /b
